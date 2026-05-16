@@ -12,7 +12,7 @@ import { Eye } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
 
-const ORDER_STATUSES = ['pending', 'confirmed', 'delivered', 'cancelled']
+const ORDER_STATUSES = ['pending', 'confirmed', 'completed', 'delivered', 'cancelled']
 
 function OrderDetailDialog({ order, open, onOpenChange }) {
   const qc = useQueryClient()

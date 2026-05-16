@@ -20,7 +20,6 @@ import StatusBadge from '@/components/shared/StatusBadge'
 const schema = z.object({
   offer_id: z.string().min(1, 'Offer is required'),
   user_id: z.string().min(1, 'User ID is required'),
-  expires_at: z.string().min(1, 'Expiry date is required'),
 })
 
 function CouponForm({ offers, onSubmit, loading }) {
@@ -43,14 +42,10 @@ function CouponForm({ offers, onSubmit, loading }) {
       </div>
       <div className="space-y-2">
         <Label>User ID</Label>
-        <Input {...register('user_id')} placeholder="User ID" />
+        <Input {...register('user_id')} placeholder="User ID from the database" />
         {errors.user_id && <p className="text-xs text-destructive">{errors.user_id.message}</p>}
       </div>
-      <div className="space-y-2">
-        <Label>Expires At</Label>
-        <Input {...register('expires_at')} type="datetime-local" />
-        {errors.expires_at && <p className="text-xs text-destructive">{errors.expires_at.message}</p>}
-      </div>
+      <p className="text-xs text-muted-foreground">Expiry is auto-derived from the offer's validity period.</p>
       <SheetFooter>
         <Button type="submit" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create Coupon

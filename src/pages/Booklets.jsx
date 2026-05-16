@@ -103,7 +103,8 @@ function OffersDialog({ booklet, open, onOpenChange }) {
   const linkedOffers = bookletData?.data?.bookletOffers?.map((bo) => bo.offer) ?? []
   const allOffers = allOffersData?.data ?? []
   const linkedIds = new Set(linkedOffers.map((o) => String(o.id)))
-  const unlinked = allOffers.filter((o) => !linkedIds.has(String(o.id)))
+  // backend validates offer must have offerType === 'booklet'
+  const unlinked = allOffers.filter((o) => o.offerType === 'booklet' && !linkedIds.has(String(o.id)))
 
   const addMut = useMutation({
     mutationFn: ({ booklet_id, offer_id }) => addOfferToBooklet(booklet_id, offer_id),

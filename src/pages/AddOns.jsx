@@ -96,7 +96,8 @@ function OffersDialog({ addOn, open, onOpenChange }) {
   const linkedOffers = addOnData?.data?.addOnOffers?.map((ao) => ao.offer) ?? []
   const allOffers = allOffersData?.data ?? []
   const linkedIds = new Set(linkedOffers.map((o) => String(o.id)))
-  const unlinked = allOffers.filter((o) => !linkedIds.has(String(o.id)))
+  // backend validates offer must have offerType === 'add_on'
+  const unlinked = allOffers.filter((o) => o.offerType === 'add_on' && !linkedIds.has(String(o.id)))
 
   const addMut = useMutation({
     mutationFn: ({ add_on_id, offer_id }) => addOfferToAddOn(add_on_id, offer_id),

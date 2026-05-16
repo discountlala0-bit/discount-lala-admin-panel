@@ -18,14 +18,20 @@ import PageHeader from '@/components/shared/PageHeader'
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   phone: z.string().min(1, 'Phone is required'),
-  email: z.string().email('Valid email required'),
-  commissionPercentage: z.coerce.number().min(0).max(100),
+  email: z.string().email('Valid email required').optional().or(z.literal('')),
+  referral_code: z.string().min(1, 'Referral code is required'),
+  commission_percentage: z.coerce.number().min(0).max(100),
 })
 
 function DistributorForm({ defaultValues, onSubmit, loading }) {
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
-    defaultValues,
+    defaultValues: {
+      commission_percentage: 0,
+      ...defaultValues,
+      referral_code: defaultValues?.referralCode ?? defaultValues?.referral_code ?? '',
+      commission_percentage: defaultValues?.commissionPercentage ?? defaultValues?.commission_percentage ?? 0,
+    },
   })
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -45,9 +51,14 @@ function DistributorForm({ defaultValues, onSubmit, loading }) {
         {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
       </div>
       <div className="space-y-2">
+        <Label>Referral Code</Label>
+        <Input {...register('referral_code')} placeholder="JOHN2025" />
+        {errors.referral_code && <p className="text-xs text-destructive">{errors.referral_code.message}</p>}
+      </div>
+      <div className="space-y-2">
         <Label>Commission %</Label>
-        <Input {...register('commissionPercentage')} type="number" placeholder="10" />
-        {errors.commissionPercentage && <p className="text-xs text-destructive">{errors.commissionPercentage.message}</p>}
+        <Input {...register('commission_percentage')} type="number" placeholder="10" />
+        {errors.commission_percentage && <p className="text-xs text-destructive">{errors.commission_percentage.message}</p>}
       </div>
       <SheetFooter>
         <Button type="submit" disabled={loading}>

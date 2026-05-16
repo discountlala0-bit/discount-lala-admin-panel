@@ -20,8 +20,8 @@ import ConfirmDialog from '@/components/shared/ConfirmDialog'
 
 const schema = z.object({
   image: z.string().url('Must be a valid URL').min(1, 'Image URL required'),
-  redirectType: z.enum(['booklet', 'add_on', 'offer', 'none']),
-  redirectId: z.string().optional(),
+  redirect_type: z.enum(['booklet', 'add_on', 'offer', 'none']),
+  redirect_id: z.string().optional(),
   priority: z.coerce.number().int().min(0),
   status: z.enum(['active', 'inactive']),
 })
@@ -29,10 +29,17 @@ const schema = z.object({
 function BannerForm({ defaultValues, onSubmit, loading }) {
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { redirectType: 'none', priority: 0, status: 'active', ...defaultValues },
+    defaultValues: {
+      redirect_type: 'none',
+      priority: 0,
+      status: 'active',
+      ...defaultValues,
+      redirect_type: defaultValues?.redirectType ?? defaultValues?.redirect_type ?? 'none',
+      redirect_id: defaultValues?.redirectId ?? defaultValues?.redirect_id ?? '',
+    },
   })
   const status = watch('status')
-  const redirectType = watch('redirectType')
+  const redirect_type = watch('redirect_type')
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -43,7 +50,7 @@ function BannerForm({ defaultValues, onSubmit, loading }) {
       </div>
       <div className="space-y-2">
         <Label>Redirect Type</Label>
-        <Select value={redirectType} onValueChange={(v) => setValue('redirectType', v)}>
+        <Select value={redirect_type} onValueChange={(v) => setValue('redirect_type', v)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="none">None</SelectItem>
@@ -53,10 +60,10 @@ function BannerForm({ defaultValues, onSubmit, loading }) {
           </SelectContent>
         </Select>
       </div>
-      {redirectType !== 'none' && (
+      {redirect_type !== 'none' && (
         <div className="space-y-2">
           <Label>Redirect ID</Label>
-          <Input {...register('redirectId')} placeholder="ID of booklet/add-on/offer" />
+          <Input {...register('redirect_id')} placeholder="ID of booklet/add-on/offer" />
         </div>
       )}
       <div className="space-y-2">
