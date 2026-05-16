@@ -189,7 +189,7 @@ export default function Offers() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Offer' : 'Add Offer'}</SheetTitle></SheetHeader>
-          <div className="mt-6">
+          <div className="px-4 pb-2">
             <OfferForm key={editing?.id ?? 'new'} defaultValues={editing} places={places} onSubmit={handleSubmit} loading={createMut.isPending || updateMut.isPending} />
           </div>
         </SheetContent>

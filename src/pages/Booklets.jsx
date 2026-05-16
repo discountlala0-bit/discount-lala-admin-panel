@@ -258,7 +258,7 @@ export default function Booklets() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Booklet' : 'Add Booklet'}</SheetTitle></SheetHeader>
-          <div className="mt-6">
+          <div className="px-4 pb-2">
             <BookletForm key={editing?.id ?? 'new'} defaultValues={editing} cities={cities} onSubmit={handleSubmit} loading={createMut.isPending || updateMut.isPending} />
           </div>
         </SheetContent>

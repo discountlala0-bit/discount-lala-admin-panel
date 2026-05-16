@@ -142,7 +142,7 @@ export default function Distributors() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent>
           <SheetHeader><SheetTitle>{editing ? 'Edit Distributor' : 'Add Distributor'}</SheetTitle></SheetHeader>
-          <div className="mt-6">
+          <div className="px-4 pb-2">
             <DistributorForm key={editing?.id ?? 'new'} defaultValues={editing} onSubmit={handleSubmit} loading={createMut.isPending || updateMut.isPending} />
           </div>
         </SheetContent>

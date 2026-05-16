@@ -172,7 +172,7 @@ export default function Cities() {
           <SheetHeader>
             <SheetTitle>{editing ? 'Edit City' : 'Add City'}</SheetTitle>
           </SheetHeader>
-          <div className="mt-6">
+          <div className="px-4 pb-2">
             <CityForm
               key={editing?.id ?? 'new'}
               defaultValues={editing}

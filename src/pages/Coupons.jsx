@@ -116,7 +116,7 @@ export default function Coupons() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent>
           <SheetHeader><SheetTitle>Create Coupon</SheetTitle></SheetHeader>
-          <div className="mt-6">
+          <div className="px-4 pb-2">
             <CouponForm offers={offers} onSubmit={(v) => createMut.mutate(v)} loading={createMut.isPending} />
           </div>
         </SheetContent>

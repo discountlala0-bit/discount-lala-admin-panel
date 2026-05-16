@@ -25,7 +25,7 @@ export default function Login() {
     setLoading(true)
     try {
       const res = await sendOtp(phone.trim())
-      setSessionInfo(res.data.sessionInfo)
+      setSessionInfo(res.sessionInfo)
       setStep('otp')
       toast.success('OTP sent successfully')
     } catch (err) {
@@ -41,12 +41,18 @@ export default function Login() {
     setLoading(true)
     try {
       const otpRes = await verifyOtp(sessionInfo, otp.trim())
-      const idToken = otpRes.data.idToken
+      const idToken = otpRes.firebaseIdToken
       const tokenRes = await verifyIdToken(idToken)
-      login(tokenRes.data.token)
+
+      if (tokenRes.isNewUser) {
+        toast.error('This phone number is not registered. Please contact your administrator.')
+        return
+      }
+
+      login(tokenRes.token)
       navigate('/')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'OTP verification failed')
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'OTP verification failed')
     } finally {
       setLoading(false)
     }

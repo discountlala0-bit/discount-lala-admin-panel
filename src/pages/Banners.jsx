@@ -171,7 +171,7 @@ export default function Banners() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Banner' : 'Add Banner'}</SheetTitle></SheetHeader>
-          <div className="mt-6">
+          <div className="px-4 pb-2">
             <BannerForm key={editing?.id ?? 'new'} defaultValues={editing} onSubmit={handleSubmit} loading={createMut.isPending || updateMut.isPending} />
           </div>
         </SheetContent>

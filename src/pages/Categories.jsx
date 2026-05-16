@@ -145,7 +145,7 @@ export default function Categories() {
           <SheetHeader>
             <SheetTitle>{editing ? 'Edit Category' : 'Add Category'}</SheetTitle>
           </SheetHeader>
-          <div className="mt-6">
+          <div className="px-4 pb-2">
             <CategoryForm
               key={editing?.id ?? 'new'}
               defaultValues={editing}
