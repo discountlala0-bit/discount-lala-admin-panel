@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { getPlaces, createPlace, updatePlace, deletePlace } from '@/api/places'
 import { getCategories } from '@/api/categories'
+import { getCities } from '@/api/cities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,23 +20,29 @@ import { MoreHorizontal, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
-
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   category_id: z.string().min(1, 'Category is required'),
+  city_id: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
   description: z.string().optional(),
   status: z.enum(['active', 'inactive']),
 })
 
-function PlaceForm({ defaultValues, categories, onSubmit, loading }) {
+function PlaceForm({ defaultValues, categories, cities, onSubmit, loading }) {
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { status: 'active', ...defaultValues, category_id: defaultValues?.categoryId ?? defaultValues?.category_id ?? '' },
+    defaultValues: {
+      status: 'active',
+      ...defaultValues,
+      category_id: defaultValues?.categoryId ?? defaultValues?.category_id ?? '',
+      city_id: defaultValues?.cityId ?? defaultValues?.city_id ?? '',
+    },
   })
   const status = watch('status')
   const category_id = watch('category_id')
+  const city_id = watch('city_id')
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -43,6 +50,15 @@ function PlaceForm({ defaultValues, categories, onSubmit, loading }) {
         <Label>Place Name</Label>
         <Input {...register('name')} placeholder="McDonald's" />
         {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+      </div>
+      <div className="space-y-2">
+        <Label>City</Label>
+        <Select value={city_id} onValueChange={(v) => setValue('city_id', v)}>
+          <SelectTrigger><SelectValue placeholder="Select city" /></SelectTrigger>
+          <SelectContent>
+            {cities.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-2">
         <Label>Category</Label>
@@ -93,8 +109,10 @@ export default function Places() {
 
   const { data, isLoading } = useQuery({ queryKey: ['places'], queryFn: () => getPlaces() })
   const { data: catData } = useQuery({ queryKey: ['categories'], queryFn: () => getCategories() })
+  const { data: citiesData } = useQuery({ queryKey: ['cities'], queryFn: () => getCities() })
   const places = data?.data ?? []
   const categories = catData?.data ?? []
+  const cities = citiesData?.data ?? []
 
   const createMut = useMutation({
     mutationFn: createPlace,
@@ -129,6 +147,7 @@ export default function Places() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>City</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Address</TableHead>
               <TableHead>Phone</TableHead>
@@ -139,14 +158,15 @@ export default function Places() {
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>{Array.from({ length: 6 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>
+                <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>
               ))
             ) : places.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No places yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">No places yet.</TableCell></TableRow>
             ) : (
               places.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-medium">{p.name}</TableCell>
+                  <TableCell>{p.city?.name ?? '—'}</TableCell>
                   <TableCell>{p.category?.name ?? '—'}</TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-40 truncate">{p.address ?? '—'}</TableCell>
                   <TableCell className="text-sm">{p.phone ?? '—'}</TableCell>
@@ -170,7 +190,7 @@ export default function Places() {
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Place' : 'Add Place'}</SheetTitle></SheetHeader>
           <div className="px-4 pb-2">
-            <PlaceForm key={editing?.id ?? 'new'} defaultValues={editing} categories={categories} onSubmit={handleSubmit} loading={createMut.isPending || updateMut.isPending} />
+            <PlaceForm key={editing?.id ?? 'new'} defaultValues={editing} categories={categories} cities={cities} onSubmit={handleSubmit} loading={createMut.isPending || updateMut.isPending} />
           </div>
         </SheetContent>
       </Sheet>

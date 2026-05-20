@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { getBooklets, getBookletById, createBooklet, updateBooklet, deleteBooklet } from '@/api/booklets'
 import { getCities } from '@/api/cities'
+import { getCategories } from '@/api/categories'
 import { getOffers, addOfferToBooklet, removeOfferFromBooklet } from '@/api/offers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,28 +17,50 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Plus, Pencil, Trash2, Loader2, List } from 'lucide-react'
+import { MoreHorizontal, Plus, Pencil, Trash2, Loader2, List, X } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
+import ImageUpload from '@/components/shared/ImageUpload'
 
 const schema = z.object({
   city_id: z.string().min(1, 'City is required'),
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   price: z.coerce.number().min(0),
-  validity: z.string().optional(),
+  validity: z.coerce.number().int().min(1).optional(),
+  image: z.string().optional(),
+  categories: z.array(z.string()).optional(),
   status: z.enum(['active', 'inactive']),
 })
 
-function BookletForm({ defaultValues, cities, onSubmit, loading }) {
+function BookletForm({ defaultValues, cities, categories, onSubmit, loading }) {
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { status: 'active', ...defaultValues, city_id: defaultValues?.cityId ?? defaultValues?.city_id ?? '' },
+    defaultValues: {
+      status: 'active',
+      image: '',
+      categories: [],
+      validity: 365,
+      ...defaultValues,
+      city_id: defaultValues?.cityId ?? defaultValues?.city_id ?? '',
+      categories: defaultValues?.bookletCategories?.map((bc) => String(bc.categoryId ?? bc.category?.id)) ?? [],
+    },
   })
   const status = watch('status')
   const city_id = watch('city_id')
+  const image = watch('image')
+  const selectedCategories = watch('categories') ?? []
+
+  const toggleCategory = (id) => {
+    const strId = String(id)
+    const next = selectedCategories.includes(strId)
+      ? selectedCategories.filter((c) => c !== strId)
+      : [...selectedCategories, strId]
+    setValue('categories', next)
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -66,9 +89,42 @@ function BookletForm({ defaultValues, cities, onSubmit, loading }) {
           <Input {...register('price')} type="number" placeholder="499" />
         </div>
         <div className="space-y-2">
-          <Label>Validity</Label>
-          <Input {...register('validity')} placeholder="1 year" />
+          <Label>Validity (days)</Label>
+          <Input {...register('validity')} type="number" placeholder="365" />
         </div>
+      </div>
+      <ImageUpload label="Booklet Cover Image" value={image} onChange={(url) => setValue('image', url)} />
+      <div className="space-y-2">
+        <Label>Categories</Label>
+        <div className="flex flex-wrap gap-2 rounded-md border p-2 min-h-10">
+          {categories.map((cat) => {
+            const selected = selectedCategories.includes(String(cat.id))
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => toggleCategory(cat.id)}
+                className={`rounded-full px-3 py-0.5 text-xs border transition-colors ${selected ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-foreground border-border hover:bg-muted'}`}
+              >
+                {cat.name}
+              </button>
+            )
+          })}
+          {categories.length === 0 && <span className="text-xs text-muted-foreground">No categories available</span>}
+        </div>
+        {selectedCategories.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {selectedCategories.map((id) => {
+              const cat = categories.find((c) => String(c.id) === id)
+              return cat ? (
+                <Badge key={id} variant="secondary" className="gap-1">
+                  {cat.name}
+                  <X className="h-3 w-3 cursor-pointer" onClick={() => toggleCategory(id)} />
+                </Badge>
+              ) : null
+            })}
+          </div>
+        )}
       </div>
       <div className="space-y-2">
         <Label>Status</Label>
@@ -98,13 +154,21 @@ function OffersDialog({ booklet, open, onOpenChange }) {
     queryFn: () => getBookletById(booklet.id),
     enabled: !!booklet,
   })
-  const { data: allOffersData } = useQuery({ queryKey: ['offers'], queryFn: () => getOffers() })
+  const cityId = booklet?.cityId ?? booklet?.city_id ?? booklet?.city?.id
+  const { data: allOffersData } = useQuery({
+    queryKey: ['offers', { city_id: cityId }],
+    queryFn: () => getOffers({ city_id: cityId }),
+    enabled: !!booklet,
+  })
 
   const linkedOffers = bookletData?.data?.bookletOffers?.map((bo) => bo.offer) ?? []
   const allOffers = allOffersData?.data ?? []
   const linkedIds = new Set(linkedOffers.map((o) => String(o.id)))
-  // backend validates offer must have offerType === 'booklet'
-  const unlinked = allOffers.filter((o) => o.offerType === 'booklet' && !linkedIds.has(String(o.id)))
+  const unlinked = allOffers.filter((o) =>
+    o.offerType === 'booklet' &&
+    !linkedIds.has(String(o.id)) &&
+    (!o.bookletOffers || o.bookletOffers.length === 0)
+  )
 
   const addMut = useMutation({
     mutationFn: ({ booklet_id, offer_id }) => addOfferToBooklet(booklet_id, offer_id),
@@ -181,8 +245,10 @@ export default function Booklets() {
 
   const { data, isLoading } = useQuery({ queryKey: ['booklets'], queryFn: () => getBooklets() })
   const { data: citiesData } = useQuery({ queryKey: ['cities'], queryFn: () => getCities() })
+  const { data: catData } = useQuery({ queryKey: ['categories'], queryFn: () => getCategories() })
   const booklets = data?.data ?? []
   const cities = citiesData?.data ?? []
+  const categories = catData?.data ?? []
 
   const createMut = useMutation({
     mutationFn: createBooklet,
@@ -220,6 +286,7 @@ export default function Booklets() {
               <TableHead>City</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Validity</TableHead>
+              <TableHead>Categories</TableHead>
               <TableHead>Offers</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-10" />
@@ -227,16 +294,24 @@ export default function Booklets() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              Array.from({ length: 4 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
+              Array.from({ length: 4 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 8 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
             ) : booklets.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">No booklets yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">No booklets yet.</TableCell></TableRow>
             ) : (
               booklets.map((b) => (
                 <TableRow key={b.id}>
-                  <TableCell className="font-medium">{b.title}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {b.image && <img src={b.image} alt={b.title} className="h-8 w-8 rounded object-cover shrink-0" />}
+                      {b.title}
+                    </div>
+                  </TableCell>
                   <TableCell>{b.city?.name ?? '—'}</TableCell>
                   <TableCell>₹{b.price}</TableCell>
-                  <TableCell>{b.validity ?? '—'}</TableCell>
+                  <TableCell>{b.validity ? `${b.validity}d` : '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {b.bookletCategories?.length ? b.bookletCategories.map((bc) => bc.category?.name).join(', ') : '—'}
+                  </TableCell>
                   <TableCell>{b.bookletOffers?.length ?? 0}</TableCell>
                   <TableCell><StatusBadge status={b.status} /></TableCell>
                   <TableCell>
@@ -259,7 +334,14 @@ export default function Booklets() {
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Booklet' : 'Add Booklet'}</SheetTitle></SheetHeader>
           <div className="px-4 pb-2">
-            <BookletForm key={editing?.id ?? 'new'} defaultValues={editing} cities={cities} onSubmit={handleSubmit} loading={createMut.isPending || updateMut.isPending} />
+            <BookletForm
+              key={editing?.id ?? 'new'}
+              defaultValues={editing}
+              cities={cities}
+              categories={categories}
+              onSubmit={handleSubmit}
+              loading={createMut.isPending || updateMut.isPending}
+            />
           </div>
         </SheetContent>
       </Sheet>
