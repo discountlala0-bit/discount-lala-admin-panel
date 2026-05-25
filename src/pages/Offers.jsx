@@ -29,12 +29,21 @@ const schema = z.object({
   place_id: z.string().min(1, 'Place is required'),
   offer_type: z.enum(['booklet', 'add_on']),
   status: z.enum(['active', 'inactive']),
+  terms_and_conditions: z.string().optional(),
+  popularity: z.coerce.number().int().min(0).optional(),
 })
 
 function OfferForm({ defaultValues, places, onSubmit, loading }) {
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { offer_type: 'add_on', status: 'active', ...defaultValues, place_id: defaultValues?.placeId ?? defaultValues?.place_id ?? '' },
+    defaultValues: {
+      offer_type: 'add_on',
+      status: 'active',
+      popularity: 0,
+      ...defaultValues,
+      place_id: defaultValues?.placeId ?? defaultValues?.place_id ?? '',
+      terms_and_conditions: defaultValues?.termsAndConditions ?? defaultValues?.terms_and_conditions ?? '',
+    },
   })
   const status = watch('status')
   const offer_type = watch('offer_type')
@@ -50,6 +59,10 @@ function OfferForm({ defaultValues, places, onSubmit, loading }) {
       <div className="space-y-2">
         <Label>Description</Label>
         <Textarea {...register('description')} placeholder="Offer details..." />
+      </div>
+      <div className="space-y-2">
+        <Label>Terms &amp; Conditions</Label>
+        <Textarea {...register('terms_and_conditions')} placeholder="Terms and conditions for this offer..." rows={3} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
@@ -86,6 +99,13 @@ function OfferForm({ defaultValues, places, onSubmit, loading }) {
           </SelectContent>
         </Select>
       </div>
+      {offer_type === 'add_on' && (
+        <div className="space-y-2">
+          <Label>Popularity</Label>
+          <Input {...register('popularity')} type="number" placeholder="0" min="0" />
+          <p className="text-xs text-muted-foreground">Higher value = shown first on home screen</p>
+        </div>
+      )}
       <div className="space-y-2">
         <Label>Status</Label>
         <Select value={status} onValueChange={(v) => setValue('status', v)}>
