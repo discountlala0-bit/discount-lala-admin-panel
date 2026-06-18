@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { sendOtp, verifyOtp, verifyIdToken } from '@/api/auth'
+import { adminLogin } from '@/api/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,46 +13,20 @@ export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const [step, setStep] = useState('phone') // 'phone' | 'otp'
-  const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState('')
-  const [sessionInfo, setSessionInfo] = useState(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleSendOtp = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
-    if (!phone.trim()) return toast.error('Enter a phone number')
+    if (!email.trim() || !password.trim()) return toast.error('Enter email and password')
     setLoading(true)
     try {
-      const res = await sendOtp(phone.trim())
-      setSessionInfo(res.sessionInfo)
-      setStep('otp')
-      toast.success('OTP sent successfully')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send OTP')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault()
-    if (!otp.trim()) return toast.error('Enter the OTP')
-    setLoading(true)
-    try {
-      const otpRes = await verifyOtp(sessionInfo, otp.trim())
-      const idToken = otpRes.firebaseIdToken
-      const tokenRes = await verifyIdToken(idToken)
-
-      if (tokenRes.isNewUser) {
-        toast.error('This phone number is not registered. Please contact your administrator.')
-        return
-      }
-
-      login(tokenRes.token)
+      const res = await adminLogin(email.trim(), password)
+      login(res.token)
       navigate('/')
     } catch (err) {
-      toast.error(err.response?.data?.error || err.response?.data?.message || 'OTP verification failed')
+      toast.error(err.response?.data?.error || 'Login failed')
     } finally {
       setLoading(false)
     }
@@ -63,55 +37,35 @@ export default function Login() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Discount Lala</CardTitle>
-          <CardDescription>Admin Panel — Sign in with your phone number</CardDescription>
+          <CardDescription>Admin Panel — Sign in with your credentials</CardDescription>
         </CardHeader>
         <CardContent>
-          {step === 'phone' ? (
-            <form onSubmit={handleSendOtp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  placeholder="+91XXXXXXXXXX"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  type="tel"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Send OTP
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <p className="text-sm text-muted-foreground">OTP sent to {phone}</p>
-              <div className="space-y-2">
-                <Label htmlFor="otp">OTP</Label>
-                <Input
-                  id="otp"
-                  placeholder="123456"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Verify & Sign In
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => { setStep('phone'); setOtp('') }}
-              >
-                Change number
-              </Button>
-            </form>
-          )}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                placeholder="admin@gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sign In
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>
