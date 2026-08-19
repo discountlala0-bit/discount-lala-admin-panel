@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,17 +21,17 @@ const schema = z.object({
   phone: z.string().min(1, 'Phone is required'),
   email: z.string().email('Valid email required').optional().or(z.literal('')),
   referral_code: z.string().min(1, 'Referral code is required'),
-  commission_percentage: z.coerce.number().min(0).max(100),
+  discount_percentage: z.coerce.number().min(0).max(100),
 })
 
 function DistributorForm({ defaultValues, onSubmit, loading }) {
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      commission_percentage: 0,
+      discount_percentage: 0,
       ...defaultValues,
       referral_code: defaultValues?.referralCode ?? defaultValues?.referral_code ?? '',
-      commission_percentage: defaultValues?.commissionPercentage ?? defaultValues?.commission_percentage ?? 0,
+      discount_percentage: defaultValues?.discountPercentage ?? defaultValues?.discount_percentage ?? 0,
     },
   })
   return (
@@ -56,9 +57,9 @@ function DistributorForm({ defaultValues, onSubmit, loading }) {
         {errors.referral_code && <p className="text-xs text-destructive">{errors.referral_code.message}</p>}
       </div>
       <div className="space-y-2">
-        <Label>Commission %</Label>
-        <Input {...register('commission_percentage')} type="number" placeholder="10" />
-        {errors.commission_percentage && <p className="text-xs text-destructive">{errors.commission_percentage.message}</p>}
+        <Label>Discount %</Label>
+        <Input {...register('discount_percentage')} type="number" placeholder="10" />
+        {errors.discount_percentage && <p className="text-xs text-destructive">{errors.discount_percentage.message}</p>}
       </div>
       <SheetFooter>
         <Button type="submit" disabled={loading}>
@@ -71,6 +72,7 @@ function DistributorForm({ defaultValues, onSubmit, loading }) {
 
 export default function Distributors() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState(null)
 
@@ -97,7 +99,7 @@ export default function Distributors() {
     <div>
       <PageHeader
         title="Distributors"
-        description="Partner distributors who earn commissions"
+        description="Partner distributors whose codes give customers a checkout discount"
         action={<Button onClick={() => { setEditing(null); setSheetOpen(true) }}><Plus className="mr-2 h-4 w-4" />Add Distributor</Button>}
       />
       <div className="rounded-md border bg-card">
@@ -108,7 +110,7 @@ export default function Distributors() {
               <TableHead>Phone</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Referral Code</TableHead>
-              <TableHead>Commission</TableHead>
+              <TableHead>Discount</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
@@ -119,13 +121,13 @@ export default function Distributors() {
               <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No distributors yet.</TableCell></TableRow>
             ) : (
               distributors.map((d) => (
-                <TableRow key={d.id}>
+                <TableRow key={d.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/distributors/${d.id}`)}>
                   <TableCell className="font-medium">{d.name}</TableCell>
                   <TableCell>{d.phone}</TableCell>
                   <TableCell>{d.email}</TableCell>
                   <TableCell className="font-mono text-sm">{d.referralCode}</TableCell>
-                  <TableCell>{d.commissionPercentage}%</TableCell>
-                  <TableCell>
+                  <TableCell>{d.discountPercentage}%</TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">

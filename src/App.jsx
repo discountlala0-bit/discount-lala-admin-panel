@@ -19,7 +19,8 @@ import Banners from '@/pages/Banners'
 import Orders from '@/pages/Orders'
 import Users from '@/pages/Users'
 import Distributors from '@/pages/Distributors'
-import Commissions from '@/pages/Commissions'
+import DistributorDetail from '@/pages/DistributorDetail'
+import DistributorUsage from '@/pages/DistributorUsage'
 import Coupons from '@/pages/Coupons'
 import Referrals from '@/pages/Referrals'
 
@@ -48,7 +49,8 @@ export default function App() {
                   <Route path="orders" element={<Orders />} />
                   <Route path="users" element={<Users />} />
                   <Route path="distributors" element={<Distributors />} />
-                  <Route path="commissions" element={<Commissions />} />
+                  <Route path="distributors/:id" element={<DistributorDetail />} />
+                  <Route path="distributor-usage" element={<DistributorUsage />} />
                   <Route path="coupons" element={<Coupons />} />
                   <Route path="referrals" element={<Referrals />} />
                 </Route>

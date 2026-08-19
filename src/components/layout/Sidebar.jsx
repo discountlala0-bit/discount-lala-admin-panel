@@ -41,7 +41,7 @@ const navGroups = [
     items: [
       { to: '/users', icon: Users, label: 'Users' },
       { to: '/distributors', icon: Truck, label: 'Distributors' },
-      { to: '/commissions', icon: DollarSign, label: 'Commissions' },
+      { to: '/distributor-usage', icon: DollarSign, label: 'Distributor Usage' },
     ],
   },
 ]
