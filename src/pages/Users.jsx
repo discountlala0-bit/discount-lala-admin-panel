@@ -6,6 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { UserCheck, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 function ReactivateButton({ userId }) {
   const qc = useQueryClient()
@@ -28,6 +31,7 @@ export default function Users() {
     queryFn: () => getDeactivatedUsers(),
   })
   const users = data?.data ?? []
+  const paginated = usePaginatedList(users, { searchKeys: ['name', 'phoneNumber', 'email'] })
 
   return (
     <div>
@@ -35,6 +39,9 @@ export default function Users() {
         title="Users"
         description="Deactivated accounts that can be reactivated"
       />
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search by name, phone or email..." />
+      </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -55,8 +62,14 @@ export default function Users() {
                   No deactivated users.
                 </TableCell>
               </TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                  No results match your search.
+                </TableCell>
+              </TableRow>
             ) : (
-              users.map((u) => (
+              paginated.pageItems.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name ?? '—'}</TableCell>
                   <TableCell>{u.phoneNumber}</TableCell>
@@ -71,6 +84,12 @@ export default function Users() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
     </div>
   )
 }

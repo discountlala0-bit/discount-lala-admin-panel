@@ -16,6 +16,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Plus, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 const schema = z.object({
   offer_id: z.string().min(1, 'Offer is required'),
@@ -63,6 +66,9 @@ export default function Coupons() {
   const { data: offersData } = useQuery({ queryKey: ['offers'], queryFn: () => getOffers() })
   const coupons = data?.data ?? []
   const offers = offersData?.data ?? []
+  const paginated = usePaginatedList(coupons, {
+    searchKeys: ['user.name', 'user.phoneNumber', 'offer.title', 'redeemCode'],
+  })
 
   const createMut = useMutation({
     mutationFn: createCoupon,
@@ -77,6 +83,9 @@ export default function Coupons() {
         description="User-specific coupons for individual offers"
         action={<Button onClick={() => setSheetOpen(true)}><Plus className="mr-2 h-4 w-4" />Create Coupon</Button>}
       />
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search by user, offer or redeem code..." />
+      </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -94,8 +103,10 @@ export default function Coupons() {
               Array.from({ length: 5 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 6 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
             ) : coupons.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No coupons yet.</TableCell></TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
             ) : (
-              coupons.map((c) => (
+              paginated.pageItems.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.offer?.title ?? '—'}</TableCell>
                   <TableCell className="text-sm">{c.user?.name ?? c.user?.phoneNumber ?? '—'}</TableCell>
@@ -113,6 +124,12 @@ export default function Coupons() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent>
           <SheetHeader><SheetTitle>Create Coupon</SheetTitle></SheetHeader>

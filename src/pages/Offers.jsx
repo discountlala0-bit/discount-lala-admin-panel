@@ -19,6 +19,9 @@ import { MoreHorizontal, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -135,6 +138,7 @@ export default function Offers() {
   const { data: placesData } = useQuery({ queryKey: ['places'], queryFn: () => getPlaces() })
   const offers = data?.data ?? []
   const places = placesData?.data ?? []
+  const paginated = usePaginatedList(offers, { searchKeys: ['title', 'place.name'] })
 
   const createMut = useMutation({
     mutationFn: createOffer,
@@ -164,6 +168,9 @@ export default function Offers() {
         description="Individual discount offers linked to places"
         action={<Button onClick={() => { setEditing(null); setSheetOpen(true) }}><Plus className="mr-2 h-4 w-4" />Add Offer</Button>}
       />
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search offers..." />
+      </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -183,8 +190,10 @@ export default function Offers() {
               ))
             ) : offers.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No offers yet.</TableCell></TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
             ) : (
-              offers.map((o) => (
+              paginated.pageItems.map((o) => (
                 <TableRow key={o.id}>
                   <TableCell className="font-medium max-w-48 truncate">{o.title}</TableCell>
                   <TableCell className="text-sm">{o.place?.name ?? '—'}</TableCell>
@@ -206,6 +215,12 @@ export default function Offers() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Offer' : 'Add Offer'}</SheetTitle></SheetHeader>

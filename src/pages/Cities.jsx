@@ -17,6 +17,9 @@ import { MoreHorizontal, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 const schema = z.object({
   name: z.string().min(1, 'City name is required'),
@@ -79,6 +82,7 @@ export default function Cities() {
     queryFn: () => getCities(),
   })
   const cities = data?.data ?? []
+  const paginated = usePaginatedList(cities, { searchKeys: ['name', 'state', 'country'] })
 
   const createMut = useMutation({
     mutationFn: createCity,
@@ -116,6 +120,10 @@ export default function Cities() {
         action={<Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Add City</Button>}
       />
 
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search cities..." />
+      </div>
+
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -142,8 +150,14 @@ export default function Cities() {
                   No cities found. Add one to get started.
                 </TableCell>
               </TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                  No results match your search.
+                </TableCell>
+              </TableRow>
             ) : (
-              cities.map((city) => (
+              paginated.pageItems.map((city) => (
                 <TableRow key={city.id}>
                   <TableCell className="font-medium">{city.name}</TableCell>
                   <TableCell>{city.state}</TableCell>
@@ -166,6 +180,12 @@ export default function Cities() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent>

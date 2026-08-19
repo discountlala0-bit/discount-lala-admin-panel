@@ -15,6 +15,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 const schema = z.object({ name: z.string().min(1, 'Category name is required') })
 
@@ -51,6 +54,7 @@ export default function Categories() {
     queryFn: () => getCategories(),
   })
   const categories = data?.data ?? []
+  const paginated = usePaginatedList(categories, { searchKeys: ['name'] })
 
   const createMut = useMutation({
     mutationFn: createCategory,
@@ -87,6 +91,10 @@ export default function Categories() {
         }
       />
 
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search categories..." />
+      </div>
+
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -111,8 +119,14 @@ export default function Categories() {
                   No categories yet.
                 </TableCell>
               </TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
+                  No results match your search.
+                </TableCell>
+              </TableRow>
             ) : (
-              categories.map((cat) => (
+              paginated.pageItems.map((cat) => (
                 <TableRow key={cat.id}>
                   <TableCell className="font-medium">{cat.name}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">
@@ -139,6 +153,12 @@ export default function Categories() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent>

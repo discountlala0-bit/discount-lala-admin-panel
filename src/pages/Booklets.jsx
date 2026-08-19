@@ -24,6 +24,9 @@ import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import ImageUpload from '@/components/shared/ImageUpload'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 const schema = z.object({
   city_id: z.string().min(1, 'City is required'),
@@ -249,6 +252,7 @@ export default function Booklets() {
   const booklets = data?.data ?? []
   const cities = citiesData?.data ?? []
   const categories = catData?.data ?? []
+  const paginated = usePaginatedList(booklets, { searchKeys: ['title', 'city.name'] })
 
   const createMut = useMutation({
     mutationFn: createBooklet,
@@ -278,6 +282,9 @@ export default function Booklets() {
         description="Discount booklets available per city"
         action={<Button onClick={() => { setEditing(null); setSheetOpen(true) }}><Plus className="mr-2 h-4 w-4" />Add Booklet</Button>}
       />
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search booklets..." />
+      </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -297,8 +304,10 @@ export default function Booklets() {
               Array.from({ length: 4 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 8 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
             ) : booklets.length === 0 ? (
               <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">No booklets yet.</TableCell></TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
             ) : (
-              booklets.map((b) => (
+              paginated.pageItems.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
@@ -330,6 +339,12 @@ export default function Booklets() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Booklet' : 'Add Booklet'}</SheetTitle></SheetHeader>

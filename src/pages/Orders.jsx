@@ -11,6 +11,9 @@ import { Badge } from '@/components/ui/badge'
 import { Eye } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 const ORDER_STATUSES = ['pending', 'confirmed', 'completed', 'delivered', 'cancelled']
 
@@ -113,10 +116,14 @@ export default function Orders() {
 
   const { data, isLoading } = useQuery({ queryKey: ['orders'], queryFn: () => getOrders() })
   const orders = data?.data ?? []
+  const paginated = usePaginatedList(orders, { searchKeys: ['user.name', 'user.phoneNumber', 'id'] })
 
   return (
     <div>
       <PageHeader title="Orders" description="All customer orders" />
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search by customer or order ID..." />
+      </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -134,8 +141,10 @@ export default function Orders() {
               Array.from({ length: 6 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 6 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
             ) : orders.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No orders yet.</TableCell></TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
             ) : (
-              orders.map((o) => (
+              paginated.pageItems.map((o) => (
                 <TableRow key={o.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedOrder(o)}>
                   <TableCell className="font-mono text-xs">{o.id.slice(0, 8)}…</TableCell>
                   <TableCell className="text-sm">{o.user?.name ?? o.user?.phoneNumber ?? '—'}</TableCell>
@@ -151,6 +160,12 @@ export default function Orders() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
       <OrderDetailDialog
         order={selectedOrder}
         open={!!selectedOrder}

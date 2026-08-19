@@ -15,6 +15,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Plus, Pencil, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -78,6 +81,7 @@ export default function Distributors() {
 
   const { data, isLoading } = useQuery({ queryKey: ['distributors'], queryFn: () => getDistributors() })
   const distributors = data?.data ?? []
+  const paginated = usePaginatedList(distributors, { searchKeys: ['name', 'phone', 'email', 'referralCode'] })
 
   const createMut = useMutation({
     mutationFn: createDistributor,
@@ -102,6 +106,9 @@ export default function Distributors() {
         description="Partner distributors whose codes give customers a checkout discount"
         action={<Button onClick={() => { setEditing(null); setSheetOpen(true) }}><Plus className="mr-2 h-4 w-4" />Add Distributor</Button>}
       />
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search distributors..." />
+      </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -119,8 +126,10 @@ export default function Distributors() {
               Array.from({ length: 4 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 6 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
             ) : distributors.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No distributors yet.</TableCell></TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
             ) : (
-              distributors.map((d) => (
+              paginated.pageItems.map((d) => (
                 <TableRow key={d.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/distributors/${d.id}`)}>
                   <TableCell className="font-medium">{d.name}</TableCell>
                   <TableCell>{d.phone}</TableCell>
@@ -141,6 +150,12 @@ export default function Distributors() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent>
           <SheetHeader><SheetTitle>{editing ? 'Edit Distributor' : 'Add Distributor'}</SheetTitle></SheetHeader>

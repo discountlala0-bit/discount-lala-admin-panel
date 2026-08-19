@@ -20,6 +20,9 @@ import { MoreHorizontal, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   category_id: z.string().min(1, 'Category is required'),
@@ -113,6 +116,7 @@ export default function Places() {
   const places = data?.data ?? []
   const categories = catData?.data ?? []
   const cities = citiesData?.data ?? []
+  const paginated = usePaginatedList(places, { searchKeys: ['name', 'address', 'city.name', 'category.name'] })
 
   const createMut = useMutation({
     mutationFn: createPlace,
@@ -142,6 +146,9 @@ export default function Places() {
         description="Restaurants, shops and locations that offer discounts"
         action={<Button onClick={() => { setEditing(null); setSheetOpen(true) }}><Plus className="mr-2 h-4 w-4" />Add Place</Button>}
       />
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search places..." />
+      </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -162,8 +169,10 @@ export default function Places() {
               ))
             ) : places.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">No places yet.</TableCell></TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
             ) : (
-              places.map((p) => (
+              paginated.pageItems.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell>{p.city?.name ?? '—'}</TableCell>
@@ -186,6 +195,12 @@ export default function Places() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Place' : 'Add Place'}</SheetTitle></SheetHeader>

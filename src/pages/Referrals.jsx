@@ -4,6 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 export default function Referrals() {
   const { data, isLoading } = useQuery({
@@ -11,10 +14,16 @@ export default function Referrals() {
     queryFn: () => getAllReferrals(),
   })
   const referrals = data?.data ?? []
+  const paginated = usePaginatedList(referrals, {
+    searchKeys: ['referrer.name', 'referrer.phoneNumber', 'referredUser.name', 'referredUser.phoneNumber'],
+  })
 
   return (
     <div>
       <PageHeader title="Referrals" description="All referral activity on the platform" />
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search by referrer or referred user..." />
+      </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -34,8 +43,14 @@ export default function Referrals() {
                   No referral records yet.
                 </TableCell>
               </TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
+                  No results match your search.
+                </TableCell>
+              </TableRow>
             ) : (
-              referrals.map((r) => (
+              paginated.pageItems.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.referrer?.name ?? r.referrer?.phoneNumber ?? '—'}</TableCell>
                   <TableCell>{r.referredUser?.name ?? r.referredUser?.phoneNumber ?? '—'}</TableCell>
@@ -49,6 +64,12 @@ export default function Referrals() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
     </div>
   )
 }

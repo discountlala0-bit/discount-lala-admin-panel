@@ -24,6 +24,9 @@ import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import ImageUpload from '@/components/shared/ImageUpload'
+import SearchInput from '@/components/shared/SearchInput'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 const schema = z.object({
   city_id: z.string().min(1, 'City is required'),
@@ -239,6 +242,7 @@ export default function AddOns() {
   const addOns = data?.data ?? []
   const cities = citiesData?.data ?? []
   const categories = catData?.data ?? []
+  const paginated = usePaginatedList(addOns, { searchKeys: ['title', 'city.name'] })
 
   const createMut = useMutation({
     mutationFn: createAddOn,
@@ -268,6 +272,9 @@ export default function AddOns() {
         description="Additional offer packs available per city"
         action={<Button onClick={() => { setEditing(null); setSheetOpen(true) }}><Plus className="mr-2 h-4 w-4" />Add Add-On</Button>}
       />
+      <div className="mb-4">
+        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search add-ons..." />
+      </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -286,8 +293,10 @@ export default function AddOns() {
               Array.from({ length: 4 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
             ) : addOns.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">No add-ons yet.</TableCell></TableRow>
+            ) : paginated.pageItems.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
             ) : (
-              addOns.map((a) => (
+              paginated.pageItems.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-medium">{a.title}</TableCell>
                   <TableCell>{a.city?.name ?? '—'}</TableCell>
@@ -313,6 +322,12 @@ export default function AddOns() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Add-On' : 'Add Add-On'}</SheetTitle></SheetHeader>

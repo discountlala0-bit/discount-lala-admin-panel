@@ -17,6 +17,8 @@ import { MoreHorizontal, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
+import DataPagination from '@/components/shared/DataPagination'
+import { usePaginatedList } from '@/hooks/usePaginatedList'
 
 const schema = z.object({
   image: z.string().url('Must be a valid URL').min(1, 'Image URL required'),
@@ -97,6 +99,7 @@ export default function Banners() {
 
   const { data, isLoading } = useQuery({ queryKey: ['banners'], queryFn: () => getBanners() })
   const banners = data?.data ?? []
+  const paginated = usePaginatedList(banners, {})
 
   const createMut = useMutation({
     mutationFn: createBanner,
@@ -144,7 +147,7 @@ export default function Banners() {
             ) : banners.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No banners yet.</TableCell></TableRow>
             ) : (
-              banners.map((b) => (
+              paginated.pageItems.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell>
                     <img src={b.image} alt="banner" className="h-10 w-20 object-cover rounded" onError={(e) => { e.target.style.display = 'none' }} />
@@ -168,6 +171,12 @@ export default function Banners() {
           </TableBody>
         </Table>
       </div>
+      <DataPagination
+        page={paginated.page}
+        totalPages={paginated.totalPages}
+        totalCount={paginated.totalCount}
+        onPageChange={paginated.setPage}
+      />
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Banner' : 'Add Banner'}</SheetTitle></SheetHeader>
