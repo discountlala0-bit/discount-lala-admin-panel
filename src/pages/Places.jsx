@@ -22,6 +22,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import SearchInput from '@/components/shared/SearchInput'
 import DataPagination from '@/components/shared/DataPagination'
+import ImageUpload from '@/components/shared/ImageUpload'
 import { usePaginatedList } from '@/hooks/usePaginatedList'
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -30,6 +31,7 @@ const schema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   description: z.string().optional(),
+  image: z.string().optional(),
   status: z.enum(['active', 'inactive']),
 })
 
@@ -41,14 +43,17 @@ function PlaceForm({ defaultValues, categories, cities, onSubmit, loading }) {
       ...defaultValues,
       category_id: defaultValues?.categoryId ?? defaultValues?.category_id ?? '',
       city_id: defaultValues?.cityId ?? defaultValues?.city_id ?? '',
+      image: defaultValues?.image ?? '',
     },
   })
   const status = watch('status')
   const category_id = watch('category_id')
   const city_id = watch('city_id')
+  const image = watch('image')
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <ImageUpload label="Place Image" value={image} onChange={(url) => setValue('image', url)} />
       <div className="space-y-2">
         <Label>Place Name</Label>
         <Input {...register('name')} placeholder="McDonald's" />
@@ -174,7 +179,16 @@ export default function Places() {
             ) : (
               paginated.pageItems.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {p.image ? (
+                        <img src={p.image} alt="" className="h-8 w-8 rounded-full object-cover border" />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-muted border" />
+                      )}
+                      {p.name}
+                    </div>
+                  </TableCell>
                   <TableCell>{p.city?.name ?? '—'}</TableCell>
                   <TableCell>{p.category?.name ?? '—'}</TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-40 truncate">{p.address ?? '—'}</TableCell>

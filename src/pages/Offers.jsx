@@ -28,9 +28,8 @@ const schema = z.object({
   description: z.string().optional(),
   price: z.coerce.number().min(0),
   timing: z.string().optional(),
-  max_people: z.coerce.number().int().min(1).optional(),
   place_id: z.string().min(1, 'Place is required'),
-  offer_type: z.enum(['booklet', 'add_on']),
+  offer_type: z.enum(['booklet', 'add_on', 'both']),
   status: z.enum(['active', 'inactive']),
   terms_and_conditions: z.string().optional(),
   popularity: z.coerce.number().int().min(0).optional(),
@@ -40,7 +39,7 @@ function OfferForm({ defaultValues, places, onSubmit, loading }) {
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      offer_type: 'add_on',
+      offer_type: defaultValues?.offerType ?? defaultValues?.offer_type ?? 'add_on',
       status: 'active',
       popularity: 0,
       ...defaultValues,
@@ -67,16 +66,10 @@ function OfferForm({ defaultValues, places, onSubmit, loading }) {
         <Label>Terms &amp; Conditions</Label>
         <Textarea {...register('terms_and_conditions')} placeholder="Terms and conditions for this offer..." rows={3} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label>Price (₹)</Label>
-          <Input {...register('price')} type="number" placeholder="0" />
-          {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
-        </div>
-        <div className="space-y-2">
-          <Label>Max People</Label>
-          <Input {...register('max_people')} type="number" placeholder="4" />
-        </div>
+      <div className="space-y-2">
+        <Label>Price (₹)</Label>
+        <Input {...register('price')} type="number" placeholder="0" />
+        {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
       </div>
       <div className="space-y-2">
         <Label>Timing</Label>
@@ -99,10 +92,11 @@ function OfferForm({ defaultValues, places, onSubmit, loading }) {
           <SelectContent>
             <SelectItem value="booklet">Booklet</SelectItem>
             <SelectItem value="add_on">Add-On</SelectItem>
+            <SelectItem value="both">Both (Booklet &amp; Add-On)</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      {offer_type === 'add_on' && (
+      {offer_type !== 'booklet' && (
         <div className="space-y-2">
           <Label>Popularity</Label>
           <Input {...register('popularity')} type="number" placeholder="0" min="0" />

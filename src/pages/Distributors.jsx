@@ -24,17 +24,16 @@ const schema = z.object({
   phone: z.string().min(1, 'Phone is required'),
   email: z.string().email('Valid email required').optional().or(z.literal('')),
   referral_code: z.string().min(1, 'Referral code is required'),
-  discount_percentage: z.coerce.number().min(0).max(100),
+  discount_amount: z.coerce.number().min(0),
 })
 
 function DistributorForm({ defaultValues, onSubmit, loading }) {
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      discount_percentage: 0,
       ...defaultValues,
       referral_code: defaultValues?.referralCode ?? defaultValues?.referral_code ?? '',
-      discount_percentage: defaultValues?.discountPercentage ?? defaultValues?.discount_percentage ?? 0,
+      discount_amount: defaultValues?.discountAmount ?? defaultValues?.discount_amount ?? 0,
     },
   })
   return (
@@ -60,9 +59,9 @@ function DistributorForm({ defaultValues, onSubmit, loading }) {
         {errors.referral_code && <p className="text-xs text-destructive">{errors.referral_code.message}</p>}
       </div>
       <div className="space-y-2">
-        <Label>Discount %</Label>
-        <Input {...register('discount_percentage')} type="number" placeholder="10" />
-        {errors.discount_percentage && <p className="text-xs text-destructive">{errors.discount_percentage.message}</p>}
+        <Label>Discount Amount (₹)</Label>
+        <Input {...register('discount_amount')} type="number" placeholder="200" />
+        {errors.discount_amount && <p className="text-xs text-destructive">{errors.discount_amount.message}</p>}
       </div>
       <SheetFooter>
         <Button type="submit" disabled={loading}>
@@ -135,7 +134,7 @@ export default function Distributors() {
                   <TableCell>{d.phone}</TableCell>
                   <TableCell>{d.email}</TableCell>
                   <TableCell className="font-mono text-sm">{d.referralCode}</TableCell>
-                  <TableCell>{d.discountPercentage}%</TableCell>
+                  <TableCell>₹{d.discountAmount}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>

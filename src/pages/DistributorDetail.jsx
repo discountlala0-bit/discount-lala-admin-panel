@@ -33,7 +33,7 @@ export default function DistributorDetail() {
         <>
           <PageHeader
             title={distributor.name}
-            description={`Referral code ${distributor.referralCode} — ${distributor.discountPercentage}% discount on booklet purchases`}
+            description={`Referral code ${distributor.referralCode} — ₹${distributor.discountAmount} discount on booklet purchases`}
           />
 
           <div className="grid grid-cols-3 gap-4 mb-6">

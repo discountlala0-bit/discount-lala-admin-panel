@@ -143,6 +143,7 @@ function AddOnForm({ defaultValues, cities, categories, onSubmit, loading }) {
 function OffersDialog({ addOn, open, onOpenChange }) {
   const qc = useQueryClient()
   const [selectedOffer, setSelectedOffer] = useState('')
+  const [selectedQuantity, setSelectedQuantity] = useState('1')
 
   const { data: addOnData, isLoading } = useQuery({
     queryKey: ['addon', addOn?.id],
@@ -156,9 +157,9 @@ function OffersDialog({ addOn, open, onOpenChange }) {
     enabled: !!addOn,
   })
 
-  const linkedOffers = addOnData?.data?.addOnOffers?.map((ao) => ao.offer) ?? []
+  const linkedAddOnOffers = addOnData?.data?.addOnOffers ?? []
   const allOffers = allOffersData?.data ?? []
-  const linkedIds = new Set(linkedOffers.map((o) => String(o.id)))
+  const linkedIds = new Set(linkedAddOnOffers.map((ao) => String(ao.offer.id)))
   const unlinked = allOffers.filter((o) =>
     o.offerType === 'add_on' &&
     !linkedIds.has(String(o.id)) &&
@@ -166,8 +167,8 @@ function OffersDialog({ addOn, open, onOpenChange }) {
   )
 
   const addMut = useMutation({
-    mutationFn: ({ add_on_id, offer_id }) => addOfferToAddOn(add_on_id, offer_id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['addon', addOn.id] }); setSelectedOffer(''); toast.success('Offer added') },
+    mutationFn: ({ add_on_id, offer_id, quantity }) => addOfferToAddOn(add_on_id, offer_id, quantity),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['addon', addOn.id] }); setSelectedOffer(''); setSelectedQuantity('1'); toast.success('Offer added') },
     onError: (e) => toast.error(e.response?.data?.message || 'Failed'),
   })
   const removeMut = useMutation({
@@ -187,34 +188,61 @@ function OffersDialog({ addOn, open, onOpenChange }) {
               {unlinked.map((o) => <SelectItem key={o.id} value={String(o.id)}>{o.title}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={selectedQuantity} onValueChange={setSelectedQuantity}>
+            <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1x</SelectItem>
+              <SelectItem value="2">2x</SelectItem>
+              <SelectItem value="3">3x</SelectItem>
+              <SelectItem value="4">4x</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             disabled={!selectedOffer || addMut.isPending}
-            onClick={() => addMut.mutate({ add_on_id: addOn.id, offer_id: selectedOffer })}
+            onClick={() => addMut.mutate({ add_on_id: addOn.id, offer_id: selectedOffer, quantity: Number(selectedQuantity) })}
           >
             {addMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Selecting 4x means a customer who buys this offer once gets 4 separate redemptions.
+        </p>
         <div className="mt-2 rounded-md border max-h-80 overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Offer</TableHead>
                 <TableHead>Price</TableHead>
+                <TableHead>Quantity</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <TableRow key={i}><TableCell colSpan={3}><Skeleton className="h-4 w-full" /></TableCell></TableRow>)
-              ) : linkedOffers.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6">No offers linked</TableCell></TableRow>
+                Array.from({ length: 3 }).map((_, i) => <TableRow key={i}><TableCell colSpan={4}><Skeleton className="h-4 w-full" /></TableCell></TableRow>)
+              ) : linkedAddOnOffers.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">No offers linked</TableCell></TableRow>
               ) : (
-                linkedOffers.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell>{o.title}</TableCell>
-                    <TableCell>₹{o.price}</TableCell>
+                linkedAddOnOffers.map((ao) => (
+                  <TableRow key={ao.offer.id}>
+                    <TableCell>{ao.offer.title}</TableCell>
+                    <TableCell>₹{ao.offer.price}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => removeMut.mutate({ add_on_id: addOn.id, offer_id: o.id })}>
+                      <Select
+                        value={String(ao.quantity ?? 1)}
+                        onValueChange={(v) => addMut.mutate({ add_on_id: addOn.id, offer_id: ao.offer.id, quantity: Number(v) })}
+                      >
+                        <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1x</SelectItem>
+                          <SelectItem value="2">2x</SelectItem>
+                          <SelectItem value="3">3x</SelectItem>
+                          <SelectItem value="4">4x</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => removeMut.mutate({ add_on_id: addOn.id, offer_id: ao.offer.id })}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>
