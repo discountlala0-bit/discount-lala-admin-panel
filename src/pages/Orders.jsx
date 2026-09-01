@@ -95,7 +95,11 @@ function OrderDetailDialog({ order, open, onOpenChange }) {
                   <TableBody>
                     {order.payments.map((p) => (
                       <TableRow key={p.id}>
-                        <TableCell className="capitalize">{p.paymentMethod}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={p.paymentMethod === 'razorpay' ? 'border-blue-500 text-blue-600 bg-blue-50' : ''}>
+                            {p.paymentMethod === 'razorpay' ? 'Razorpay' : p.paymentMethod}
+                          </Badge>
+                        </TableCell>
                         <TableCell><StatusBadge status={p.paymentStatus} /></TableCell>
                         <TableCell className="font-mono text-xs">{p.transactionId ?? '—'}</TableCell>
                       </TableRow>
@@ -131,6 +135,7 @@ export default function Orders() {
               <TableHead>Order ID</TableHead>
               <TableHead>User</TableHead>
               <TableHead>Amount</TableHead>
+              <TableHead>Payment Gateway</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="w-10" />
@@ -138,24 +143,36 @@ export default function Orders() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 6 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
+              Array.from({ length: 6 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
             ) : orders.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No orders yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">No orders yet.</TableCell></TableRow>
             ) : paginated.pageItems.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
             ) : (
-              paginated.pageItems.map((o) => (
-                <TableRow key={o.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedOrder(o)}>
-                  <TableCell className="font-mono text-xs">{o.id.slice(0, 8)}…</TableCell>
-                  <TableCell className="text-sm">{o.user?.name ?? o.user?.phoneNumber ?? '—'}</TableCell>
-                  <TableCell className="font-medium">₹{o.totalAmount}</TableCell>
-                  <TableCell><StatusBadge status={o.status} /></TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{new Date(o.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              paginated.pageItems.map((o) => {
+                const primaryPayment = o.payments?.[0]
+                return (
+                  <TableRow key={o.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedOrder(o)}>
+                    <TableCell className="font-mono text-xs">{o.id.slice(0, 8)}…</TableCell>
+                    <TableCell className="text-sm">{o.user?.name ?? o.user?.phoneNumber ?? '—'}</TableCell>
+                    <TableCell className="font-medium">₹{o.totalAmount}</TableCell>
+                    <TableCell>
+                      {primaryPayment ? (
+                        <Badge variant="outline" className={primaryPayment.paymentMethod === 'razorpay' ? 'border-blue-500 text-blue-600 bg-blue-50' : ''}>
+                          {primaryPayment.paymentMethod === 'razorpay' ? 'Razorpay' : primaryPayment.paymentMethod}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell><StatusBadge status={o.status} /></TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{new Date(o.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>
