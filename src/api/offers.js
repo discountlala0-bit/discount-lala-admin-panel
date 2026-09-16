@@ -9,3 +9,5 @@ export const addOfferToBooklet = (booklet_id, offer_id, quantity = 1) =>
   client.post('/api/admin/offers/booklet/add', { booklet_id, offer_id, quantity })
 export const removeOfferFromBooklet = (booklet_id, offer_id) =>
   client.delete(`/api/admin/offers/booklet/${booklet_id}/offer/${offer_id}`)
+export const setBookletOfferVisibility = (booklet_id, offer_id, hidden_for_new_users) =>
+  client.patch(`/api/admin/offers/booklet/${booklet_id}/offer/${offer_id}/visibility`, { hidden_for_new_users })

@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { getBooklets, getBookletById, createBooklet, updateBooklet, deleteBooklet } from '@/api/booklets'
 import { getCities } from '@/api/cities'
 import { getCategories } from '@/api/categories'
-import { getOffers, addOfferToBooklet, removeOfferFromBooklet } from '@/api/offers'
+import { getOffers, addOfferToBooklet, removeOfferFromBooklet, setBookletOfferVisibility } from '@/api/offers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,6 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Plus, Pencil, Trash2, Loader2, List, X } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
@@ -152,6 +154,7 @@ function OffersDialog({ booklet, open, onOpenChange }) {
   const qc = useQueryClient()
   const [selectedOffer, setSelectedOffer] = useState('')
   const [selectedQuantity, setSelectedQuantity] = useState('1')
+  const [removeTarget, setRemoveTarget] = useState(null)
 
   const { data: bookletData, isLoading } = useQuery({
     queryKey: ['booklet', booklet?.id],
@@ -181,13 +184,22 @@ function OffersDialog({ booklet, open, onOpenChange }) {
   })
   const removeMut = useMutation({
     mutationFn: ({ booklet_id, offer_id }) => removeOfferFromBooklet(booklet_id, offer_id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['booklet', booklet.id] }); toast.success('Offer removed') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['booklet', booklet.id] }); setRemoveTarget(null); toast.success('Offer removed') },
+    onError: (e) => toast.error(e.response?.data?.message || 'Failed'),
+  })
+  const visibilityMut = useMutation({
+    mutationFn: ({ booklet_id, offer_id, hidden_for_new_users }) => setBookletOfferVisibility(booklet_id, offer_id, hidden_for_new_users),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['booklet', booklet.id] })
+      toast.success(vars.hidden_for_new_users ? 'Hidden from new users' : 'Visible to new users again')
+    },
     onError: (e) => toast.error(e.response?.data?.message || 'Failed'),
   })
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Manage Offers — {booklet?.title}</DialogTitle>
         </DialogHeader>
@@ -216,6 +228,8 @@ function OffersDialog({ booklet, open, onOpenChange }) {
         </div>
         <p className="text-xs text-muted-foreground mt-1">
           Selecting 4x links the same coupon into this booklet with 4 separate redemptions for the customer.
+          Use the "New Users" switch to hide a coupon from future buyers while existing owners keep it, or the
+          trash icon to unlink it from this booklet entirely.
         </p>
         <div className="mt-2 rounded-md border max-h-80 overflow-y-auto">
           <Table>
@@ -224,18 +238,24 @@ function OffersDialog({ booklet, open, onOpenChange }) {
                 <TableHead>Offer</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Quantity</TableHead>
+                <TableHead>New Users</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <TableRow key={i}><TableCell colSpan={4}><Skeleton className="h-4 w-full" /></TableCell></TableRow>)
+                Array.from({ length: 3 }).map((_, i) => <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-4 w-full" /></TableCell></TableRow>)
               ) : linkedBookletOffers.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">No offers linked</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No offers linked</TableCell></TableRow>
               ) : (
                 linkedBookletOffers.map((bo) => (
                   <TableRow key={bo.offer.id}>
-                    <TableCell>{bo.offer.title}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {bo.offer.title}
+                        {bo.hiddenForNewUsers && <Badge variant="secondary">Hidden</Badge>}
+                      </div>
+                    </TableCell>
                     <TableCell>₹{bo.offer.price}</TableCell>
                     <TableCell>
                       <Select
@@ -252,7 +272,25 @@ function OffersDialog({ booklet, open, onOpenChange }) {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => removeMut.mutate({ booklet_id: booklet.id, offer_id: bo.offer.id })}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Switch
+                              checked={!bo.hiddenForNewUsers}
+                              onCheckedChange={(checked) => visibilityMut.mutate({ booklet_id: booklet.id, offer_id: bo.offer.id, hidden_for_new_users: !checked })}
+                              disabled={visibilityMut.isPending}
+                            />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {bo.hiddenForNewUsers
+                            ? 'Hidden from new buyers — existing owners still keep it. Toggle to show again.'
+                            : 'Visible to new buyers. Toggle off to hide from future buyers only (existing owners keep it).'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => setRemoveTarget(bo)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>
@@ -264,6 +302,15 @@ function OffersDialog({ booklet, open, onOpenChange }) {
         </div>
       </DialogContent>
     </Dialog>
+    <ConfirmDialog
+      open={!!removeTarget}
+      onOpenChange={(v) => !v && setRemoveTarget(null)}
+      title="Remove Coupon from Booklet"
+      description={`Permanently unlink "${removeTarget?.offer?.title}" from this booklet? Customers who already purchased this booklet will keep this coupon — only future buyers won't receive it. The coupon itself won't be deleted, but it will disappear from this list (use the "New Users" switch instead if you may want to re-enable it later).`}
+      onConfirm={() => removeMut.mutate({ booklet_id: booklet.id, offer_id: removeTarget.offer.id })}
+      loading={removeMut.isPending}
+    />
+    </>
   )
 }
 
