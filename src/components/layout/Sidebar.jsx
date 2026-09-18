@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, MapPin, Tag, Store, Gift, BookOpen,
   PlusSquare, Image, ShoppingBag, Users, Truck,
-  DollarSign, Ticket, Share2, ChevronLeft,
+  DollarSign, Ticket, Share2, ChevronLeft, FileText, ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -44,17 +44,24 @@ const navGroups = [
       { to: '/distributor-usage', icon: DollarSign, label: 'Distributor Usage' },
     ],
   },
+  {
+    label: 'Settings',
+    items: [
+      { to: '/terms-and-conditions', icon: FileText, label: 'Terms & Conditions' },
+      { to: '/privacy-policy', icon: ShieldCheck, label: 'Privacy Policy' },
+    ],
+  },
 ]
 
 export default function Sidebar({ collapsed, onToggle }) {
   return (
     <aside
       className={cn(
-        'flex flex-col border-r bg-card transition-all duration-200',
+        'flex h-full min-h-0 flex-col border-r bg-card transition-all duration-200',
         collapsed ? 'w-16' : 'w-60'
       )}
     >
-      <div className="flex h-14 items-center justify-between px-4 border-b">
+      <div className="flex h-14 shrink-0 items-center justify-between px-4 border-b">
         {!collapsed && (
           <span className="font-bold text-lg tracking-tight">Discount Lala</span>
         )}
@@ -63,7 +70,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 py-2">
+      <ScrollArea className="min-h-0 flex-1 py-2">
         {navGroups.map((group) => (
           <div key={group.label} className="mb-2">
             {!collapsed && (

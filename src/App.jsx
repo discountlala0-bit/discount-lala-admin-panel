@@ -23,6 +23,8 @@ import DistributorDetail from '@/pages/DistributorDetail'
 import DistributorUsage from '@/pages/DistributorUsage'
 import Coupons from '@/pages/Coupons'
 import Referrals from '@/pages/Referrals'
+import TermsAndConditions from '@/pages/TermsAndConditions'
+import PrivacyPolicy from '@/pages/PrivacyPolicy'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -53,6 +55,8 @@ export default function App() {
                   <Route path="distributor-usage" element={<DistributorUsage />} />
                   <Route path="coupons" element={<Coupons />} />
                   <Route path="referrals" element={<Referrals />} />
+                  <Route path="terms-and-conditions" element={<TermsAndConditions />} />
+                  <Route path="privacy-policy" element={<PrivacyPolicy />} />
                 </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
