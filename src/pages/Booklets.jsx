@@ -36,6 +36,7 @@ const schema = z.object({
   description: z.string().optional(),
   price: z.coerce.number().min(0),
   validity: z.coerce.number().int().min(1).optional(),
+  popularity: z.coerce.number().int().min(0).optional(),
   image: z.string().optional(),
   categories: z.array(z.string()).optional(),
   status: z.enum(['active', 'inactive']),
@@ -49,6 +50,7 @@ function BookletForm({ defaultValues, cities, categories, onSubmit, loading }) {
       image: '',
       categories: [],
       validity: 365,
+      popularity: 0,
       ...defaultValues,
       city_id: defaultValues?.cityId ?? defaultValues?.city_id ?? '',
       categories: defaultValues?.bookletCategories?.map((bc) => String(bc.categoryId ?? bc.category?.id)) ?? [],
@@ -88,7 +90,7 @@ function BookletForm({ defaultValues, cities, categories, onSubmit, loading }) {
         <Label>Description</Label>
         <Textarea {...register('description')} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="space-y-2">
           <Label>Price (₹)</Label>
           <Input {...register('price')} type="number" placeholder="499" />
@@ -96,6 +98,10 @@ function BookletForm({ defaultValues, cities, categories, onSubmit, loading }) {
         <div className="space-y-2">
           <Label>Validity (days)</Label>
           <Input {...register('validity')} type="number" placeholder="365" />
+        </div>
+        <div className="space-y-2">
+          <Label>Popularity</Label>
+          <Input {...register('popularity')} type="number" placeholder="0" min="0" />
         </div>
       </div>
       <ImageUpload label="Booklet Cover Image" value={image} onChange={(url) => setValue('image', url)} />
@@ -149,6 +155,8 @@ function BookletForm({ defaultValues, cities, categories, onSubmit, loading }) {
     </form>
   )
 }
+
+const QUANTITY_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25, 30, 40, 50]
 
 function OffersDialog({ booklet, open, onOpenChange }) {
   const qc = useQueryClient()
@@ -211,12 +219,11 @@ function OffersDialog({ booklet, open, onOpenChange }) {
             </SelectContent>
           </Select>
           <Select value={selectedQuantity} onValueChange={setSelectedQuantity}>
-            <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">1x</SelectItem>
-              <SelectItem value="2">2x</SelectItem>
-              <SelectItem value="3">3x</SelectItem>
-              <SelectItem value="4">4x</SelectItem>
+            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+            <SelectContent className="max-h-60 overflow-y-auto">
+              {QUANTITY_OPTIONS.map((q) => (
+                <SelectItem key={q} value={String(q)}>{q}x</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button
@@ -227,7 +234,7 @@ function OffersDialog({ booklet, open, onOpenChange }) {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          Selecting 4x links the same coupon into this booklet with 4 separate redemptions for the customer.
+          Selecting (e.g. 20x) links the same coupon into this booklet with 20 separate redemptions for the customer.
           Use the "New Users" switch to hide a coupon from future buyers while existing owners keep it, or the
           trash icon to unlink it from this booklet entirely.
         </p>
@@ -262,12 +269,11 @@ function OffersDialog({ booklet, open, onOpenChange }) {
                         value={String(bo.quantity ?? 1)}
                         onValueChange={(v) => addMut.mutate({ booklet_id: booklet.id, offer_id: bo.offer.id, quantity: Number(v) })}
                       >
-                        <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1x</SelectItem>
-                          <SelectItem value="2">2x</SelectItem>
-                          <SelectItem value="3">3x</SelectItem>
-                          <SelectItem value="4">4x</SelectItem>
+                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-y-auto">
+                          {QUANTITY_OPTIONS.map((q) => (
+                            <SelectItem key={q} value={String(q)}>{q}x</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -368,6 +374,7 @@ export default function Booklets() {
               <TableHead>City</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Validity</TableHead>
+              <TableHead>Popularity</TableHead>
               <TableHead>Categories</TableHead>
               <TableHead>Offers</TableHead>
               <TableHead>Status</TableHead>
@@ -376,11 +383,11 @@ export default function Booklets() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              Array.from({ length: 4 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 8 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
+              Array.from({ length: 4 }).map((_, i) => <TableRow key={i}>{Array.from({ length: 9 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}</TableRow>)
             ) : booklets.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">No booklets yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-10">No booklets yet.</TableCell></TableRow>
             ) : paginated.pageItems.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-10">No results match your search.</TableCell></TableRow>
             ) : (
               paginated.pageItems.map((b) => (
                 <TableRow key={b.id}>
@@ -393,6 +400,7 @@ export default function Booklets() {
                   <TableCell>{b.city?.name ?? '—'}</TableCell>
                   <TableCell>₹{b.price}</TableCell>
                   <TableCell>{b.validity ? `${b.validity}d` : '—'}</TableCell>
+                  <TableCell>{b.popularity ?? 0}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {b.bookletCategories?.length ? b.bookletCategories.map((bc) => bc.category?.name).join(', ') : '—'}
                   </TableCell>

@@ -140,6 +140,8 @@ function AddOnForm({ defaultValues, cities, categories, onSubmit, loading }) {
   )
 }
 
+const QUANTITY_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25, 30, 40, 50]
+
 function OffersDialog({ addOn, open, onOpenChange }) {
   const qc = useQueryClient()
   const [selectedOffer, setSelectedOffer] = useState('')
@@ -189,12 +191,11 @@ function OffersDialog({ addOn, open, onOpenChange }) {
             </SelectContent>
           </Select>
           <Select value={selectedQuantity} onValueChange={setSelectedQuantity}>
-            <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">1x</SelectItem>
-              <SelectItem value="2">2x</SelectItem>
-              <SelectItem value="3">3x</SelectItem>
-              <SelectItem value="4">4x</SelectItem>
+            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+            <SelectContent className="max-h-60 overflow-y-auto">
+              {QUANTITY_OPTIONS.map((q) => (
+                <SelectItem key={q} value={String(q)}>{q}x</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button
@@ -205,7 +206,7 @@ function OffersDialog({ addOn, open, onOpenChange }) {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          Selecting 4x means a customer who buys this offer once gets 4 separate redemptions.
+          Selecting e.g. 20x means a customer who buys this offer once gets 20 separate redemptions.
         </p>
         <div className="mt-2 rounded-md border max-h-80 overflow-y-auto">
           <Table>
@@ -232,12 +233,11 @@ function OffersDialog({ addOn, open, onOpenChange }) {
                         value={String(ao.quantity ?? 1)}
                         onValueChange={(v) => addMut.mutate({ add_on_id: addOn.id, offer_id: ao.offer.id, quantity: Number(v) })}
                       >
-                        <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1x</SelectItem>
-                          <SelectItem value="2">2x</SelectItem>
-                          <SelectItem value="3">3x</SelectItem>
-                          <SelectItem value="4">4x</SelectItem>
+                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-y-auto">
+                          {QUANTITY_OPTIONS.map((q) => (
+                            <SelectItem key={q} value={String(q)}>{q}x</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
