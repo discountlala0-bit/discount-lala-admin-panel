@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { getBooklets, getBookletById, createBooklet, updateBooklet, deleteBooklet } from '@/api/booklets'
 import { getCities } from '@/api/cities'
 import { getCategories } from '@/api/categories'
-import { getOffers, addOfferToBooklet, removeOfferFromBooklet, setBookletOfferVisibility } from '@/api/offers'
+import { getOffers, addOfferToBooklet, removeOfferFromBooklet, setBookletOfferVisibility, updateOffer } from '@/api/offers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -102,6 +102,7 @@ function BookletForm({ defaultValues, cities, categories, onSubmit, loading }) {
         <div className="space-y-2">
           <Label>Popularity</Label>
           <Input {...register('popularity')} type="number" placeholder="0" min="0" />
+          <p className="text-[10px] text-muted-foreground">Lower number = top</p>
         </div>
       </div>
       <ImageUpload label="Booklet Cover Image" value={image} onChange={(url) => setValue('image', url)} />
@@ -203,6 +204,15 @@ function OffersDialog({ booklet, open, onOpenChange }) {
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Failed'),
   })
+  const updateOfferMut = useMutation({
+    mutationFn: ({ id, data }) => updateOffer(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['booklet', booklet.id] })
+      qc.invalidateQueries({ queryKey: ['offers'] })
+      toast.success('Offer popularity updated')
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Failed'),
+  })
 
   return (
     <>
@@ -235,8 +245,7 @@ function OffersDialog({ booklet, open, onOpenChange }) {
         </div>
         <p className="text-xs text-muted-foreground mt-1">
           Selecting (e.g. 20x) links the same coupon into this booklet with 20 separate redemptions for the customer.
-          Use the "New Users" switch to hide a coupon from future buyers while existing owners keep it, or the
-          trash icon to unlink it from this booklet entirely.
+          Set Popularity (lower number = top). Use "New Users" switch to hide a coupon from future buyers.
         </p>
         <div className="mt-2 rounded-md border max-h-80 overflow-y-auto">
           <Table>
@@ -244,6 +253,7 @@ function OffersDialog({ booklet, open, onOpenChange }) {
               <TableRow>
                 <TableHead>Offer</TableHead>
                 <TableHead>Price</TableHead>
+                <TableHead>Popularity</TableHead>
                 <TableHead>Quantity</TableHead>
                 <TableHead>New Users</TableHead>
                 <TableHead className="w-10" />
@@ -251,9 +261,9 @@ function OffersDialog({ booklet, open, onOpenChange }) {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-4 w-full" /></TableCell></TableRow>)
+                Array.from({ length: 3 }).map((_, i) => <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-4 w-full" /></TableCell></TableRow>)
               ) : linkedBookletOffers.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No offers linked</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No offers linked</TableCell></TableRow>
               ) : (
                 linkedBookletOffers.map((bo) => (
                   <TableRow key={bo.offer.id}>
@@ -264,6 +274,29 @@ function OffersDialog({ booklet, open, onOpenChange }) {
                       </div>
                     </TableCell>
                     <TableCell>₹{bo.offer.price}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        className="w-20 h-8 text-xs"
+                        min="0"
+                        defaultValue={bo.offer?.popularity ?? 0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            const val = parseInt(e.currentTarget.value, 10) || 0
+                            if (val !== (bo.offer?.popularity ?? 0)) {
+                              updateOfferMut.mutate({ id: bo.offer.id, data: { popularity: val } })
+                            }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const val = parseInt(e.target.value, 10) || 0
+                          if (val !== (bo.offer?.popularity ?? 0)) {
+                            updateOfferMut.mutate({ id: bo.offer.id, data: { popularity: val } })
+                          }
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Select
                         value={String(bo.quantity ?? 1)}
