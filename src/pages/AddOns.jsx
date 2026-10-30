@@ -163,9 +163,8 @@ function OffersDialog({ addOn, open, onOpenChange }) {
   const allOffers = allOffersData?.data ?? []
   const linkedIds = new Set(linkedAddOnOffers.map((ao) => String(ao.offer.id)))
   const unlinked = allOffers.filter((o) =>
-    o.offerType === 'add_on' &&
-    !linkedIds.has(String(o.id)) &&
-    (!o.addOnOffers || o.addOnOffers.length === 0)
+    (o.offerType === 'add_on' || o.offerType === 'both') &&
+    !linkedIds.has(String(o.id))
   )
 
   const addMut = useMutation({
@@ -181,13 +180,17 @@ function OffersDialog({ addOn, open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="w-[85vw] max-w-[85vw] sm:max-w-[85vw] max-h-[85vh] flex flex-col">
         <DialogHeader><DialogTitle>Manage Offers — {addOn?.title}</DialogTitle></DialogHeader>
         <div className="flex gap-2 mt-2">
           <Select value={selectedOffer} onValueChange={setSelectedOffer}>
             <SelectTrigger className="flex-1"><SelectValue placeholder="Select offer to add" /></SelectTrigger>
-            <SelectContent>
-              {unlinked.map((o) => <SelectItem key={o.id} value={String(o.id)}>{o.title}</SelectItem>)}
+            <SelectContent className="max-h-60 overflow-y-auto">
+              {unlinked.map((o) => (
+                <SelectItem key={o.id} value={String(o.id)}>
+                  {o.place?.name ? `[${o.place.name}] ` : ''}{o.title}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={selectedQuantity} onValueChange={setSelectedQuantity}>
@@ -208,7 +211,7 @@ function OffersDialog({ addOn, open, onOpenChange }) {
         <p className="text-xs text-muted-foreground mt-1">
           Selecting e.g. 20x means a customer who buys this offer once gets 20 separate redemptions.
         </p>
-        <div className="mt-2 rounded-md border max-h-80 overflow-y-auto">
+        <div className="mt-2 rounded-md border flex-1 max-h-[55vh] overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>

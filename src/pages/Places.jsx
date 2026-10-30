@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
@@ -24,9 +25,11 @@ import SearchInput from '@/components/shared/SearchInput'
 import DataPagination from '@/components/shared/DataPagination'
 import ImageUpload from '@/components/shared/ImageUpload'
 import { usePaginatedList } from '@/hooks/usePaginatedList'
+
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   category_id: z.string().min(1, 'Category is required'),
+  city_ids: z.array(z.string()).optional(),
   city_id: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
@@ -36,20 +39,41 @@ const schema = z.object({
 })
 
 function PlaceForm({ defaultValues, categories, cities, onSubmit, loading }) {
+  const initialCityIds = (() => {
+    if (defaultValues?.city_ids && Array.isArray(defaultValues.city_ids)) {
+      return defaultValues.city_ids.map(String)
+    }
+    if (defaultValues?.cities && Array.isArray(defaultValues.cities)) {
+      return defaultValues.cities.map((c) => String(c.id ?? c))
+    }
+    const single = defaultValues?.cityId ?? defaultValues?.city_id
+    return single ? [String(single)] : []
+  })()
+
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       status: 'active',
       ...defaultValues,
       category_id: defaultValues?.categoryId ?? defaultValues?.category_id ?? '',
-      city_id: defaultValues?.cityId ?? defaultValues?.city_id ?? '',
+      city_ids: initialCityIds,
+      city_id: initialCityIds[0] ?? '',
       image: defaultValues?.image ?? '',
     },
   })
   const status = watch('status')
   const category_id = watch('category_id')
-  const city_id = watch('city_id')
+  const city_ids = watch('city_ids') ?? []
   const image = watch('image')
+
+  const toggleCity = (cityId) => {
+    const strId = String(cityId)
+    const next = city_ids.includes(strId)
+      ? city_ids.filter((id) => id !== strId)
+      : [...city_ids, strId]
+    setValue('city_ids', next)
+    setValue('city_id', next[0] ?? '')
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -59,15 +83,39 @@ function PlaceForm({ defaultValues, categories, cities, onSubmit, loading }) {
         <Input {...register('name')} placeholder="McDonald's" />
         {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
       </div>
+
       <div className="space-y-2">
-        <Label>City</Label>
-        <Select value={city_id} onValueChange={(v) => setValue('city_id', v)}>
-          <SelectTrigger><SelectValue placeholder="Select city" /></SelectTrigger>
-          <SelectContent>
-            {cities.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center justify-between">
+          <Label>Cities (Select one or more)</Label>
+          {city_ids.length > 0 && (
+            <span className="text-xs text-muted-foreground">{city_ids.length} selected</span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2 rounded-md border p-2 min-h-11 max-h-48 overflow-y-auto">
+          {cities.map((c) => {
+            const selected = city_ids.includes(String(c.id))
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => toggleCity(c.id)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-colors cursor-pointer flex items-center gap-1 ${
+                  selected
+                    ? 'bg-primary text-primary-foreground border-primary font-medium'
+                    : 'bg-background hover:bg-muted text-muted-foreground'
+                }`}
+              >
+                <span>{selected ? '✓' : '+'}</span>
+                <span>{c.name}</span>
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          You can link this place to multiple cities without removing it from other cities.
+        </p>
       </div>
+
       <div className="space-y-2">
         <Label>Category</Label>
         <Select value={category_id} onValueChange={(v) => setValue('category_id', v)}>
@@ -152,14 +200,19 @@ export default function Places() {
         action={<Button onClick={() => { setEditing(null); setSheetOpen(true) }}><Plus className="mr-2 h-4 w-4" />Add Place</Button>}
       />
       <div className="mb-4">
-        <SearchInput value={paginated.search} onChange={paginated.setSearch} placeholder="Search places..." />
+        <SearchInput
+          value={paginated.search}
+          onChange={paginated.setSearch}
+          placeholder="Search places..."
+          className="max-w-xs"
+        />
       </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>City</TableHead>
+              <TableHead>Cities</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Address</TableHead>
               <TableHead>Phone</TableHead>
@@ -189,7 +242,19 @@ export default function Places() {
                       {p.name}
                     </div>
                   </TableCell>
-                  <TableCell>{p.city?.name ?? '—'}</TableCell>
+                  <TableCell>
+                    {p.cities && p.cities.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 max-w-[220px]">
+                        {p.cities.map((c) => (
+                          <Badge key={c.id ?? c.name} variant="secondary" className="text-xs font-normal">
+                            {c.name ?? c}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      p.city?.name ?? '—'
+                    )}
+                  </TableCell>
                   <TableCell>{p.category?.name ?? '—'}</TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-40 truncate">{p.address ?? '—'}</TableCell>
                   <TableCell className="text-sm">{p.phone ?? '—'}</TableCell>
@@ -219,14 +284,24 @@ export default function Places() {
         <SheetContent className="overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? 'Edit Place' : 'Add Place'}</SheetTitle></SheetHeader>
           <div className="px-4 pb-2">
-            <PlaceForm key={editing?.id ?? 'new'} defaultValues={editing} categories={categories} cities={cities} onSubmit={handleSubmit} loading={createMut.isPending || updateMut.isPending} />
+            <PlaceForm
+              key={editing?.id ?? 'new'}
+              defaultValues={editing}
+              categories={categories}
+              cities={cities}
+              onSubmit={handleSubmit}
+              loading={createMut.isPending || updateMut.isPending}
+            />
           </div>
         </SheetContent>
       </Sheet>
       <ConfirmDialog
-        open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}
-        title="Delete Place" description={`Delete "${deleteTarget?.name}"?`}
-        onConfirm={() => deleteMut.mutate(deleteTarget.id)} loading={deleteMut.isPending}
+        open={!!deleteTarget}
+        onOpenChange={(v) => !v && setDeleteTarget(null)}
+        title="Delete Place"
+        description={`Are you sure you want to delete "${deleteTarget?.name}"? All associated offers will also be deleted.`}
+        onConfirm={() => deleteMut.mutate(deleteTarget.id)}
+        loading={deleteMut.isPending}
       />
     </div>
   )

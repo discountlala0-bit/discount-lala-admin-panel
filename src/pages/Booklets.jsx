@@ -181,9 +181,8 @@ function OffersDialog({ booklet, open, onOpenChange }) {
   const allOffers = allOffersData?.data ?? []
   const linkedIds = new Set(linkedBookletOffers.map((bo) => String(bo.offer.id)))
   const unlinked = allOffers.filter((o) =>
-    o.offerType === 'booklet' &&
-    !linkedIds.has(String(o.id)) &&
-    (!o.bookletOffers || o.bookletOffers.length === 0)
+    (o.offerType === 'booklet' || o.offerType === 'both') &&
+    !linkedIds.has(String(o.id))
   )
 
   const addMut = useMutation({
@@ -217,15 +216,19 @@ function OffersDialog({ booklet, open, onOpenChange }) {
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="w-[85vw] max-w-[85vw] sm:max-w-[85vw] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Manage Offers — {booklet?.title}</DialogTitle>
         </DialogHeader>
         <div className="flex gap-2 mt-2">
           <Select value={selectedOffer} onValueChange={setSelectedOffer}>
             <SelectTrigger className="flex-1"><SelectValue placeholder="Select offer to add" /></SelectTrigger>
-            <SelectContent>
-              {unlinked.map((o) => <SelectItem key={o.id} value={String(o.id)}>{o.title}</SelectItem>)}
+            <SelectContent className="max-h-60 overflow-y-auto">
+              {unlinked.map((o) => (
+                <SelectItem key={o.id} value={String(o.id)}>
+                  {o.place?.name ? `[${o.place.name}] ` : ''}{o.title}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={selectedQuantity} onValueChange={setSelectedQuantity}>
@@ -247,7 +250,7 @@ function OffersDialog({ booklet, open, onOpenChange }) {
           Selecting (e.g. 20x) links the same coupon into this booklet with 20 separate redemptions for the customer.
           Set Popularity (lower number = top). Use "New Users" switch to hide a coupon from future buyers.
         </p>
-        <div className="mt-2 rounded-md border max-h-80 overflow-y-auto">
+        <div className="mt-2 rounded-md border flex-1 max-h-[55vh] overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>
