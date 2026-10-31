@@ -1,10 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { getBooklets, getBookletById, createBooklet, updateBooklet, deleteBooklet } from '@/api/booklets'
+import {
+  getBooklets,
+  getBookletById,
+  getBookletPlaces,
+  updateBookletPlacesSequence,
+  createBooklet,
+  updateBooklet,
+  deleteBooklet,
+} from '@/api/booklets'
 import { getCities } from '@/api/cities'
 import { getCategories } from '@/api/categories'
 import { getOffers, addOfferToBooklet, removeOfferFromBooklet, setBookletOfferVisibility, updateOffer } from '@/api/offers'
@@ -21,7 +29,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Plus, Pencil, Trash2, Loader2, List, X } from 'lucide-react'
+import { MoreHorizontal, Plus, Pencil, Trash2, Loader2, List, X, ArrowUpDown, MapPin, Store } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import StatusBadge from '@/components/shared/StatusBadge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
@@ -356,12 +364,235 @@ function OffersDialog({ booklet, open, onOpenChange }) {
   )
 }
 
+function BookletPlacesDialog({ booklet, open, onOpenChange }) {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery({
+    queryKey: ['booklet-places', booklet?.id],
+    queryFn: () => getBookletPlaces(booklet.id),
+    enabled: !!booklet && open,
+  })
+
+  const [localPlaces, setLocalPlaces] = useState([])
+  const [hasChanges, setHasChanges] = useState(false)
+
+  const bookletInfo = data?.data?.booklet
+
+  useEffect(() => {
+    if (data?.data?.places) {
+      setLocalPlaces(data.data.places)
+      setHasChanges(false)
+    }
+  }, [data])
+
+  const saveMut = useMutation({
+    mutationFn: (places) => updateBookletPlacesSequence(booklet.id, { places }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['booklet-places', booklet.id] })
+      qc.invalidateQueries({ queryKey: ['booklet', booklet.id] })
+      qc.invalidateQueries({ queryKey: ['booklets'] })
+      setHasChanges(false)
+      toast.success('Places sequence saved successfully')
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to save sequence'),
+  })
+
+  const handlePriorityChange = (placeId, newPriority) => {
+    const val = parseInt(newPriority, 10) || 0
+    setLocalPlaces((prev) =>
+      prev.map((p) => (p.placeId === placeId ? { ...p, priority: val } : p))
+    )
+    setHasChanges(true)
+  }
+
+  const handleSortByPriority = () => {
+    const sorted = [...localPlaces].sort((a, b) => (Number(a.priority) || 0) - (Number(b.priority) || 0))
+    setLocalPlaces(sorted)
+  }
+
+  const handleRenumber = () => {
+    const sorted = [...localPlaces].sort((a, b) => (Number(a.priority) || 0) - (Number(b.priority) || 0))
+    const renumbered = sorted.map((p, idx) => ({ ...p, priority: idx + 1 }))
+    setLocalPlaces(renumbered)
+    setHasChanges(true)
+  }
+
+  const handleSave = () => {
+    const sorted = [...localPlaces].sort((a, b) => (Number(a.priority) || 0) - (Number(b.priority) || 0))
+    setLocalPlaces(sorted)
+    saveMut.mutate(
+      sorted.map((p) => ({
+        placeId: p.placeId,
+        priority: Number(p.priority) || 0,
+      }))
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[85vw] max-w-[85vw] sm:max-w-[85vw] max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Store className="h-5 w-5 text-primary" />
+            Booklet Places & Display Sequence
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Booklet Header Summary Card */}
+        <div className="bg-muted/40 p-4 rounded-lg border flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mt-1">
+          <div className="flex items-center gap-3">
+            {(bookletInfo?.image || booklet?.image) ? (
+              <img
+                src={bookletInfo?.image || booklet?.image}
+                alt={bookletInfo?.title || booklet?.title}
+                className="h-14 w-14 rounded-md object-cover border shrink-0 shadow-sm"
+              />
+            ) : (
+              <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center border shrink-0 text-xs text-muted-foreground">
+                No Cover
+              </div>
+            )}
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-lg">{bookletInfo?.title || booklet?.title}</h3>
+                <StatusBadge status={bookletInfo?.status || booklet?.status} />
+              </div>
+              <div className="flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground mt-1">
+                <span className="flex items-center gap-1 font-medium text-foreground">
+                  <MapPin className="h-3.5 w-3.5 text-primary" /> {bookletInfo?.cityName || booklet?.city?.name || '—'}
+                </span>
+                <span>•</span>
+                <span className="font-semibold text-foreground">₹{bookletInfo?.price ?? booklet?.price}</span>
+                <span>•</span>
+                <span>{bookletInfo?.validity ?? booklet?.validity} days validity</span>
+                <span>•</span>
+                <Badge variant="outline" className="font-medium text-primary border-primary/30">
+                  {bookletInfo?.totalPlaces ?? localPlaces.length} Places
+                </Badge>
+                <Badge variant="outline" className="font-medium">
+                  {bookletInfo?.totalOffers ?? 0} Total Coupons
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+            <Button variant="outline" size="sm" onClick={handleSortByPriority} title="Order list by current sequence numbers">
+              Sort by Sequence
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRenumber} title="Re-index places cleanly from 1 to N">
+              Re-number 1..{localPlaces.length}
+            </Button>
+            <Button
+              size="sm"
+              disabled={saveMut.isPending || (!hasChanges && localPlaces.length > 0)}
+              onClick={handleSave}
+            >
+              {saveMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Sequence
+            </Button>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground mt-1">
+          Set the sequence number for each place (1 = 1st place, 2 = 2nd place, etc.). Places will appear in this exact order in the customer mobile application.
+        </p>
+
+        {/* Places Sequence Table */}
+        <div className="mt-2 rounded-md border flex-1 max-h-[50vh] overflow-y-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16 text-center">#</TableHead>
+                <TableHead>Place</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Address / Contact</TableHead>
+                <TableHead className="text-center">Coupons in Booklet</TableHead>
+                <TableHead className="w-36 text-center">Sequence Number</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                  </TableRow>
+                ))
+              ) : localPlaces.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
+                    No places found in this booklet. Link offers to this booklet from "Manage Offers".
+                  </TableCell>
+                </TableRow>
+              ) : (
+                localPlaces.map((place, index) => (
+                  <TableRow key={place.placeId} className="hover:bg-muted/50">
+                    <TableCell className="text-center text-xs text-muted-foreground font-medium">
+                      {index + 1}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {place.image ? (
+                          <img
+                            src={place.image}
+                            alt={place.name}
+                            className="h-9 w-9 rounded-md object-cover border shrink-0"
+                          />
+                        ) : (
+                          <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center border shrink-0">
+                            <Store className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-semibold text-sm">{place.name}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="font-normal text-xs">
+                        {place.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-xs text-muted-foreground max-w-xs truncate" title={place.address}>
+                        {place.address || '—'}
+                      </div>
+                      {place.phone && <div className="text-[11px] text-muted-foreground">{place.phone}</div>}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className="text-xs font-semibold">
+                        {place.offersCount} coupon{place.offersCount !== 1 ? 's' : ''}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center">
+                        <Input
+                          type="number"
+                          min="1"
+                          className="w-20 h-9 text-center text-sm font-bold border-2 focus:border-primary shadow-sm mx-auto"
+                          value={place.priority}
+                          placeholder="1"
+                          onChange={(e) => handlePriorityChange(place.placeId, e.target.value)}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function Booklets() {
   const qc = useQueryClient()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [offersTarget, setOffersTarget] = useState(null)
+  const [placesTarget, setPlacesTarget] = useState(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['booklets'], queryFn: () => getBooklets() })
   const { data: citiesData } = useQuery({ queryKey: ['cities'], queryFn: () => getCities() })
@@ -428,9 +659,21 @@ export default function Booklets() {
               paginated.pageItems.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {b.image && <img src={b.image} alt={b.title} className="h-8 w-8 rounded object-cover shrink-0" />}
-                      {b.title}
+                    <div
+                      className="flex items-center gap-2 cursor-pointer group"
+                      onClick={() => setPlacesTarget(b)}
+                      title="Click to view details & manage places sequence"
+                    >
+                      {b.image && (
+                        <img
+                          src={b.image}
+                          alt={b.title}
+                          className="h-8 w-8 rounded object-cover shrink-0 group-hover:ring-2 group-hover:ring-primary transition-all"
+                        />
+                      )}
+                      <span className="group-hover:text-primary group-hover:underline transition-colors font-medium">
+                        {b.title}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>{b.city?.name ?? '—'}</TableCell>
@@ -446,6 +689,7 @@ export default function Booklets() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setPlacesTarget(b)}><ArrowUpDown className="mr-2 h-4 w-4" />Places & Sequence</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setOffersTarget(b)}><List className="mr-2 h-4 w-4" />Manage Offers</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => { setEditing(b); setSheetOpen(true) }}><Pencil className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setDeleteTarget(b)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
@@ -480,6 +724,7 @@ export default function Booklets() {
         </SheetContent>
       </Sheet>
       <OffersDialog booklet={offersTarget} open={!!offersTarget} onOpenChange={(v) => !v && setOffersTarget(null)} />
+      <BookletPlacesDialog booklet={placesTarget} open={!!placesTarget} onOpenChange={(v) => !v && setPlacesTarget(null)} />
       <ConfirmDialog
         open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}
         title="Delete Booklet" description={`Delete "${deleteTarget?.title}"?`}
